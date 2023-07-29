@@ -8,9 +8,9 @@ import tensorflow as tf
 from datetime import datetime
 from sklearn.metrics import roc_curve, roc_auc_score, classification_report, confusion_matrix, multilabel_confusion_matrix
 
-IMG_SIZE = 75 #224
-INPUT_SHAPE = (IMG_SIZE, IMG_SIZE, 3)
-seed = 1337
+IMG_SIZE = 75 #224 (original image size)
+INPUT_SHAPE = (IMG_SIZE, IMG_SIZE, 3) # Input shape for the neural network
+seed = 1337 # Random seed for reproducibility
 
 def explore_3D_array(arr: np.ndarray, cmap: str = 'gray'):
   """
@@ -28,7 +28,6 @@ def explore_3D_array(arr: np.ndarray, cmap: str = 'gray'):
     plt.imshow(arr[SLICE, :, :], cmap=cmap)
 
   interact(fn, SLICE=(0, arr.shape[0]-1))
-
 
 def explore_3D_array_comparison(arr_before: np.ndarray, arr_after: np.ndarray, cmap: str = 'gray'):
   """
@@ -57,7 +56,6 @@ def explore_3D_array_comparison(arr_before: np.ndarray, arr_after: np.ndarray, c
   
   interact(fn, SLICE=(0, arr_before.shape[0]-1))
 
-
 def show_sitk_img_info(img: sitk.Image):
   """
   Given a sitk.Image instance prints the information about the MRI image contained.
@@ -74,7 +72,6 @@ def show_sitk_img_info(img: sitk.Image):
   info = {'Pixel Type' : pixel_type, 'Dimensions': dimensions, 'Spacing': spacing, 'Origin': origin,  'Direction' : direction}
   for k,v in info.items():
     print(f' {k} : {v}')
-
 
 def add_suffix_to_filename(filename: str, suffix:str) -> str:
   """
@@ -96,14 +93,12 @@ def add_suffix_to_filename(filename: str, suffix:str) -> str:
   else:
       raise RuntimeError('filename with unknown extension')
 
-
 def rescale_linear(array: np.ndarray, new_min: int, new_max: int):
   """Rescale an array linearly."""
   minimum, maximum = np.min(array), np.max(array)
   m = (new_max - new_min) / (maximum - minimum)
   b = new_min - m * minimum
   return m * array + b
-
 
 def explore_3D_array_with_mask_contour(arr: np.ndarray, mask: np.ndarray, thickness: int = 1):
   """
@@ -134,6 +129,27 @@ def explore_3D_array_with_mask_contour(arr: np.ndarray, mask: np.ndarray, thickn
   interact(fn, SLICE=(0, arr.shape[0]-1))
 
 def create_testgenerator(dataset,preprocessing_function, image_size=IMG_SIZE, batch_size=1, class_mode='binary'):
+    """
+    This function uses the TensorFlow Keras `ImageDataGenerator` to create a test data generator.
+    The generator can be used to load and preprocess images from a directory during testing or
+    evaluation of a machine learning model. The generator applies optional preprocessing_function
+    to the images if provided.
+
+    Args:
+        dataset (str): Path to the directory containing test images organized into subdirectories by class.
+        preprocessing_function (callable): Optional preprocessing function to be applied to the images.
+            This function should take an image as input and return the preprocessed image.
+        image_size (int): Target size for resizing images. Default is the value of IMG_SIZE.
+        batch_size (int): Number of images to include in each batch. Default is 1.
+        class_mode (str): One of 'binary' or 'categorical', indicating the type of class labels.
+            Default is 'binary'.
+
+    Returns:
+        tf.keras.preprocessing.image.DirectoryIterator: A test data generator that can be used with a
+        machine learning model's `predict` method.
+
+    """
+    
     test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
 #         rescale=1./255,
         fill_mode="constant",
@@ -152,6 +168,27 @@ def create_testgenerator(dataset,preprocessing_function, image_size=IMG_SIZE, ba
     return test_generator
 
 def make_prediction(model, test_generator, class_mode='binary', verbose=False):
+    """
+    Makes predictions using a given machine learning model on test data.
+
+    Args:
+        model (tf.keras.Model): A trained machine learning model that will be used for prediction.
+        test_generator (tf.keras.preprocessing.image.DirectoryIterator): A test data generator
+            that yields batches of test images and their corresponding labels.
+        class_mode (str): One of 'binary' or 'categorical', indicating the type of class labels.
+            Default is 'binary'.
+        verbose (bool): If True, print the predictions. Default is False.
+
+    Returns:
+        list or numpy.ndarray: A list of binary or categorical predictions, depending on the class_mode.
+        If class_mode is 'binary', the list will contain binary values (0 or 1) indicating the predicted
+        class for each test sample. If class_mode is 'categorical', the list will contain the predicted
+        class indices for each test sample.
+
+    Raises:
+        ValueError: If the provided class_mode is not 'binary' or 'categorical'.
+
+    """
     test_generator.reset()
     predictions = model.predict(test_generator, verbose=1)
     if verbose:
@@ -164,13 +201,31 @@ def make_prediction(model, test_generator, class_mode='binary', verbose=False):
         raise ValueError("Class mode must be in either 'binary' or 'categorical'")
     return predictions
 
-
+##################
+# Importing required libraries for the model
 import seaborn as sns
 sns.set(font_scale=1)
 
 def plot_conf_mat(y_test, y_preds, save_path=None):
     """
-    Plots a nice looking confusion matrix using Seaborn's heatmap()
+    Plots a confusion matrix using Seaborn's heatmap.
+
+    This function takes the true labels (y_test) and predicted labels (y_preds) and creates a
+    visually appealing confusion matrix using Seaborn's heatmap. The confusion matrix shows the
+    performance of a classification model by comparing the true labels with the predicted labels.
+
+    Args:
+        y_test (array-like): True labels of the test data.
+        y_preds (array-like): Predicted labels of the test data.
+        save_path (str or None): If provided, the plot will be saved at the specified path.
+            Default is None, meaning the plot will not be saved.
+
+    Returns:
+        None: This function does not return any value. It only generates and displays the plot.
+
+    Note:
+        This function requires the seaborn library to be installed.
+
     """
     fig, ax = plt.subplots(figsize=(3, 3))
     confmat = confusion_matrix(y_test, y_preds)
@@ -196,10 +251,25 @@ def plot_conf_mat(y_test, y_preds, save_path=None):
         print(f"Plot saved in {save_path}")
         fig.savefig(save_path, bbox_inches = "tight")
         
-        
-        
-        
 def compute_metrics(y_true, y_pred):
+    """
+    This function calculates different evaluation metrics to assess the performance of a binary
+    or multiclass classification model. The metrics include accuracy, precision, recall (sensitivity),
+    area under the ROC curve (AUC), sensitivity at a specific specificity (SN), and specificity at a
+    specific sensitivity (SP).
+
+    Args:
+        y_true (array-like): True labels of the data.
+        y_pred (array-like): Predicted labels of the data.
+
+    Returns:
+        dict: A dictionary containing the computed metrics, with keys as metric names and values as
+            the corresponding metric values.
+
+    Note:
+        This function requires the `tensorflow` library to be installed.
+    """
+    
     metrics = dict()
 
     acc = tf.keras.metrics.Accuracy()
