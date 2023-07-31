@@ -24,8 +24,8 @@ of 84% with the DL models and 95% with the Shallow ML models. The proposed
 methodology may be helpful for rapid and accurate stroke assessment for an acute
 treatment to minimize patient complications."
 
-## Results
-""
+<!-- ## Results
+"" -->
 
 ## Required Python packages
 - sitk
